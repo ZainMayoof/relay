@@ -37,16 +37,17 @@ relay.equipmentUnits.aggregate([
 ]).forEach(show);
 
 heading("REFERENCE AND DATE CHECKS");
-const typeIds = new Set(relay.equipmentTypes.find({}, { _id: 1 }).toArray().map(d => String(d._id)));
-const unitIds = new Set(relay.equipmentUnits.find({}, { _id: 1 }).toArray().map(d => String(d._id)));
-const userIds = new Set(relay.users.find({}, { _id: 1 }).toArray().map(d => String(d._id)));
-const requestIds = new Set(relay.borrowRequests.find({}, { _id: 1 }).toArray().map(d => String(d._id)));
+const toLookup = collection => Object.fromEntries(relay.getCollection(collection).find({}, { _id: 1 }).toArray().map(d => [String(d._id), true]));
+const typeIds = toLookup("equipmentTypes");
+const unitIds = toLookup("equipmentUnits");
+const userIds = toLookup("users");
+const requestIds = toLookup("borrowRequests");
 const entityIds = {
   users: userIds,
   equipmentTypes: typeIds,
   equipmentUnits: unitIds,
   borrowRequests: requestIds,
-  reservations: new Set(relay.reservations.find({}, { _id: 1 }).toArray().map(d => String(d._id)))
+  reservations: toLookup("reservations")
 };
 let checkedUnits = 0;
 let checkedRequests = 0;
@@ -54,26 +55,26 @@ let checkedReservations = 0;
 let checkedEvents = 0;
 
 for (const unit of relay.equipmentUnits.find()) {
-  if (!typeIds.has(String(unit.equipmentTypeId))) throw new Error("Invalid equipment type reference");
+  if (!typeIds[String(unit.equipmentTypeId)]) throw new Error("Invalid equipment type reference");
   checkedUnits++;
 }
 for (const request of relay.borrowRequests.find()) {
-  if (!userIds.has(String(request.borrowerId))) throw new Error("Invalid borrower reference");
+  if (!userIds[String(request.borrowerId)]) throw new Error("Invalid borrower reference");
   if (request.endDate < request.startDate) throw new Error("Invalid borrowing date range");
   for (const item of request.items) {
-    if (!typeIds.has(String(item.equipmentTypeId))) throw new Error("Invalid requested type reference");
+    if (!typeIds[String(item.equipmentTypeId)]) throw new Error("Invalid requested type reference");
   }
   checkedRequests++;
 }
 for (const reservation of relay.reservations.find()) {
-  if (!requestIds.has(String(reservation.requestId)) || !unitIds.has(String(reservation.equipmentUnitId))) {
+  if (!requestIds[String(reservation.requestId)] || !unitIds[String(reservation.equipmentUnitId)]) {
     throw new Error("Invalid reservation reference");
   }
   checkedReservations++;
 }
 for (const event of relay.auditEvents.find()) {
-  if (!userIds.has(String(event.actorId))) throw new Error("Invalid audit actor");
-  if (!entityIds[event.entityType]?.has(String(event.entityId))) {
+  if (!userIds[String(event.actorId)]) throw new Error("Invalid audit actor");
+  if (!(entityIds[event.entityType] && entityIds[event.entityType][String(event.entityId)])) {
     throw new Error("Invalid audit entity reference");
   }
   checkedEvents++;
