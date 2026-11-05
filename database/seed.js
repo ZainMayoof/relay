@@ -340,7 +340,7 @@ const specs = [
   ["rejected", "2026-11-09", "2026-11-11", [["UNO",5]]],
   ["cancelled", "2026-11-14", "2026-11-16", [["MINI",1],["LED",1]]]
 ];
-const reviewed = at("2026-10-25");
+const reviewed = at("2026-11-02");
 const requests = specs.map(([status, start, end, items], i) => {
   const borrower = users[i % 12]._id;
   const historical = status === "returned";
