@@ -8,7 +8,7 @@ Passwords use Argon2id. New passwords require at least 12 characters and at most
 
 ## First administrator
 
-Run database setup only when provisioning an intended database. The bootstrap CLI never runs automatically. From backend, pipe a JSON object containing name, email and password through standard input to npm run bootstrap:admin. Supply it using a secure local secret source, not command-line arguments or a committed file. The CLI reads backend/.env and refuses any existing administrator or duplicate email. It never overwrites an account. A seeded administrator with TEST_ONLY_NO_LOGIN blocks bootstrap and requires a separately approved account recovery decision.
+Run database setup only when provisioning an intended database. The bootstrap CLI never runs automatically. From backend, pipe a JSON object containing name, email and password through standard input to npm run bootstrap:admin. Supply it using a secure local secret source, not command-line arguments or a committed file. The CLI reads backend/.env and refuses an existing non-placeholder administrator, a previous bootstrap audit, or duplicate email. Only the exact TEST_ONLY_NO_LOGIN placeholder is exempt. Inactive and malformed non-placeholder admin hashes still block bootstrap. It never overwrites seeded accounts or their referenced IDs. The reserved first-admin ID and bootstrap audit keep this one-time, even after that account is demoted or removed.
 
 After login, an administrator creates staff and borrower accounts through POST /api/users with name, email, password and role. isActive is optional and defaults to true. No public registration exists.
 
@@ -75,7 +75,7 @@ Install Node.js, mongosh, Nginx and mkcert using their official distributions. B
 
 ```powershell
 mkcert -install
-New-Item -ItemType Directory -Force backend/deploy/certs, backend/deploy/logs
+New-Item -ItemType Directory -Force backend/deploy/certs, backend/deploy/logs, backend/deploy/temp/client_body_temp, backend/deploy/temp/proxy_temp, backend/deploy/temp/fastcgi_temp, backend/deploy/temp/uwsgi_temp, backend/deploy/temp/scgi_temp
 mkcert -cert-file backend/deploy/certs/localhost.pem -key-file backend/deploy/certs/localhost-key.pem localhost 127.0.0.1 ::1
 cd backend
 npm ci
@@ -100,4 +100,28 @@ Open https://localhost/api-docs and https://localhost/openapi.json. Login throug
 
 mongodb-memory-server is test infrastructure only. It downloads or reuses a local MongoDB binary and creates disposable instances for transaction, rollback, reservation conflict, concurrent approval, inventory race, account-change and destructive CRUD tests. It does not replace Atlas. The first npm install/npm ci or full test run may take longer while a relatively large MongoDB binary downloads. Never point destructive tests at Atlas.
 
-This workspace lacked Nginx, mkcert and a configured backend/.env during this change. HTTPS proxy execution and the Atlas checker could not be verified here. The proxy configuration test checks its text, not Nginx runtime behavior. Browser certificate trust and authenticated Swagger still require verification on the configured local setup.
+The team subsequently reported successful Windows HTTPS, Nginx syntax, Swagger browser and read-only Atlas verification. These checks were not independently rerun here. This workspace lacked Nginx, mkcert and a configured backend/.env during this change. HTTPS proxy execution and the Atlas checker could not be verified here. The proxy configuration test checks its text, not Nginx runtime behavior. Browser certificate trust and authenticated Swagger still require verification on the configured local setup.
+
+### Initialize the seeded Atlas database
+
+Seeded users remain demonstration records and never authenticate. Bootstrap adds one separate real administrator with an Argon2id hash and an actor-linked audit, without changing seed IDs or history. Normal staff and borrower accounts are then created through POST /api/users. Access to the bootstrap CLI and Atlas write credentials must stay with the project owners; there is no public bootstrap endpoint.
+
+After pulling this branch, configure backend/.env locally with the existing Atlas credentials and APP_ORIGIN=https://localhost. Do not rerun setup or seed. In PowerShell, from backend:
+
+```powershell
+$adminName = Read-Host 'Administrator name'
+$adminEmail = Read-Host 'Administrator email (use a new email)'
+$adminSecret = Read-Host 'Password (at least 12 characters)' -AsSecureString
+$adminCredential = [System.Net.NetworkCredential]::new('', $adminSecret)
+try {
+    @{ name = $adminName; email = $adminEmail; password = $adminCredential.Password } | ConvertTo-Json -Compress | npm run bootstrap:admin
+} finally {
+    Remove-Variable adminCredential, adminSecret
+}
+```
+
+Run this explicitly once. Do not put a password directly in shell history or a saved JSON file. The password briefly exists in process memory and stdin for hashing. A failure never replaces a seeded hash or resets an account. The students should retain the real admin credentials securely; bootstrap is not account recovery.
+
+Start Express and Nginx using the local HTTPS instructions. Open https://localhost/api-docs, execute POST /api/auth/login with the new email/password, then execute GET /api/auth/me. The browser manages the HttpOnly cookie; leave cookieAuth Authorize empty. Use POST /api/users as this admin to create staff and borrower accounts. Do not use seeded placeholder credentials. Avoid saving passwords in Swagger examples or screenshots.
+
+The bootstrap changes are tested only against disposable MongoDB. No live Atlas records or references were inspected or changed by this work.

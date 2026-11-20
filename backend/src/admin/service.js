@@ -36,7 +36,8 @@ export async function bootstrap(connection, credentials) {
   user._id = new ObjectId('000000000000000000000001');
   return connection.client.withSession(session => session.withTransaction(async () => {
     const db = sessionDatabase(connection.db, session);
-    if (await db.collection('users').findOne({ role: 'admin' })) fail(409, 'ADMIN_EXISTS', 'An administrator already exists');
+    if (await db.collection('auditEvents').findOne({ action: 'bootstrapped', entityType: 'users', entityId: user._id }) ||
+        await db.collection('users').findOne({ role: 'admin', passwordHash: { $ne: 'TEST_ONLY_NO_LOGIN' } })) fail(409, 'ADMIN_EXISTS', 'An administrator already exists');
     await db.collection('users').insertOne(user);
     await audit(db, user._id, 'bootstrapped', 'users', user._id);
     return profile(user);

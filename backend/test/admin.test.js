@@ -7,17 +7,30 @@ test('administration and bootstrap against real MongoDB', { timeout: 180000 }, a
   const connection = await isolatedMongo(); const { db } = connection;
   try {
     let admin;
+    const seeded = await fixtureUser(db, 'admin');
+    const seededBefore = await db.collection('users').findOne({ _id: seeded._id });
     const credentials = { name: 'Administrator', email: ' ADMIN@example.test ', password: 'Test-only secret phrase 42!' };
     await t.test('concurrent bootstrap creates exactly one hashed administrator and audit', async () => {
       const results = await Promise.allSettled([bootstrap(connection, credentials), bootstrap(connection, { ...credentials, email: 'second@example.test' })]);
       assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
-      assert.equal(await db.collection('users').countDocuments({ role: 'admin' }), 1);
-      admin = await db.collection('users').findOne({ role: 'admin' });
+      assert.equal(await db.collection('users').countDocuments({ role: 'admin' }), 2);
+      admin = await db.collection('users').findOne({ role: 'admin', passwordHash: { $ne: 'TEST_ONLY_NO_LOGIN' } });
+      assert.deepEqual(await db.collection('users').findOne({ _id: seeded._id }), seededBefore);
+      assert.equal(await verifyPassword(seeded.passwordHash, credentials.password), false);
       assert(admin.passwordHash.startsWith('$argon2id$'));
       assert(await verifyPassword(admin.passwordHash, credentials.password));
       assert.equal(await db.collection('auditEvents').countDocuments({ action: 'bootstrapped', actorId: admin._id }), 1);
       assert(!('passwordHash' in results.find(r => r.status === 'fulfilled').value));
       await assert.rejects(bootstrap(connection, credentials), e => e.status === 409);
+    });
+    await t.test('bootstrap refuses inactive real admins and cannot repeat after demotion or removal', async () => {
+      await db.collection('users').updateOne({ _id: admin._id }, { $set: { isActive: false } });
+      await assert.rejects(bootstrap(connection, { ...credentials, email: 'retry@example.test' }), e => e.status === 409);
+      await db.collection('users').updateOne({ _id: admin._id }, { $set: { role: 'borrower' } });
+      await assert.rejects(bootstrap(connection, { ...credentials, email: 'retry@example.test' }), e => e.status === 409);
+      await db.collection('users').deleteOne({ _id: admin._id });
+      await assert.rejects(bootstrap(connection, { ...credentials, email: 'retry@example.test' }), e => e.status === 409);
+      await db.collection('users').insertOne(admin);
     });
     await t.test('account creation validates fields, normalizes email and enforces uniqueness', async () => {
       const service = adminService(connection, admin._id);

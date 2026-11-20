@@ -8,3 +8,4 @@ __pycache__/
 backend/deploy/certs/
 backend/deploy/logs/
 *.key
+backend/deploy/temp/
