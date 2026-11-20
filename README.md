@@ -81,3 +81,7 @@ See [Phase 1 test notes](backend/TESTING.md) for details and the remaining manua
 
 References: [MongoDB Atlas connection requirements](https://www.mongodb.com/docs/atlas/connect-to-database-deployment/),
 [MongoDB Node.js driver](https://www.mongodb.com/docs/drivers/node/current/get-started/).
+
+## Phase 2B equipment implementation
+
+The eight equipment routes are implemented and tested against isolated MongoDB. Production access remains denied until authentication and actor-linked auditing are integrated. See [equipment API contract and test results](backend/EQUIPMENT.md).
