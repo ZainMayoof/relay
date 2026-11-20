@@ -47,7 +47,14 @@ export function equipmentService(db, now = () => new Date()) {
       const type = await find(types, _id);
       const response = { equipmentTypeId: String(_id), startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10), availableCount: 0, advisory: true };
       if (!type.isActive) return response;
-      const candidates = await units.aggregate([
+      response.availableCount = (await eligibleUnits(db, _id, { start, end }, now)).length;
+      return response;
+    }
+  };
+}
+
+export async function eligibleUnits(db, _id, { start, end }, now = () => new Date()) {
+      const candidates = await db.collection('equipmentUnits').aggregate([
         { $match: { equipmentTypeId: _id, serviceStatus: 'active', condition: { $in: ['good', 'fair'] } } },
         { $lookup: { from: 'reservations', let: { unit: '$_id' }, pipeline: [
           { $match: { $expr: { $eq: ['$equipmentUnitId', '$$unit'] }, status: 'active', reservedDays: { $elemMatch: { $gte: start, $lte: end } } } },
@@ -58,6 +65,7 @@ export function equipmentService(db, now = () => new Date()) {
         { $project: { activeCheckoutRequestId: 1, equipmentTypeId: 1, checkout: 1 } }
       ]).toArray();
       const today = new Date(now().toISOString().slice(0, 10) + 'T00:00:00.000Z');
+      const eligible = [];
       for (const unit of candidates) {
         if (unit.activeCheckoutRequestId != null) {
           const request = unit.checkout[0];
@@ -68,9 +76,7 @@ export function equipmentService(db, now = () => new Date()) {
               request.endDate < today) continue;
           if (start <= request.endDate) continue;
         }
-        response.availableCount++;
+        eligible.push(unit);
       }
-      return response;
-    }
-  };
+  return eligible;
 }
