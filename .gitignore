@@ -4,3 +4,7 @@
 node_modules/
 __pycache__/
 .DS_Store
+
+backend/deploy/certs/
+backend/deploy/logs/
+*.key

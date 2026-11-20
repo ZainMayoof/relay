@@ -66,3 +66,38 @@ Remaining work includes isolated mongodump/mongorestore recovery verification, d
 Open `/api-docs` on the running backend for Swagger UI, or `/openapi.json` for the raw OpenAPI 3.0 document. The dedicated specification is `docs/openapi.yaml` (JSON syntax, valid YAML). All 24 operations are documented.
 
 Use the same HTTPS origin configured in APP_ORIGIN for interactive authenticated requests. The browser manages the Secure, HttpOnly session cookie after login. Swagger cannot set that cookie through the Authorize dialog. Local HTTP and cross-origin access may prevent authenticated Try it out requests. Authentication, role checks and Origin protection remain unchanged. Never paste session tokens into Swagger.
+
+## Local HTTPS
+
+Application traffic: browser -> HTTPS Nginx -> HTTP Express on loopback -> MongoDB Atlas. Atlas remains the application database. Nginx only terminates TLS and forwards requests; authentication, RBAC, auditing and transactions stay in Express. No Express trust-proxy setting is needed because cookies are explicitly Secure and Origin is checked directly.
+
+Install Node.js, mongosh, Nginx and mkcert using their official distributions. Both teammates use the same relative paths. From the repository root:
+
+```powershell
+mkcert -install
+New-Item -ItemType Directory -Force backend/deploy/certs, backend/deploy/logs
+mkcert -cert-file backend/deploy/certs/localhost.pem -key-file backend/deploy/certs/localhost-key.pem localhost 127.0.0.1 ::1
+cd backend
+npm ci
+Copy-Item .env.example .env
+```
+
+Set MONGODB_URI locally to the existing Atlas SRV/TLS connection string. MONGODB_DB is the application database name, normally relay. Keep HOST=127.0.0.1, PORT=3000 and APP_ORIGIN=https://localhost. HOST/PORT bind the internal HTTP API; APP_ORIGIN identifies the browser-facing HTTPS origin. Never commit .env or certificate keys. mkcert installs a local trust root; do not share its private root key.
+
+From backend, run `npm run test:connection` for the read-only Atlas check, then `npm start`. In another terminal at the repository root:
+
+```powershell
+$proxyRoot = (Resolve-Path backend/deploy).Path.Replace('\', '/') + '/'
+nginx -p $proxyRoot -c nginx.conf -t
+nginx -p $proxyRoot -c nginx.conf
+```
+
+Nginx must be on PATH. Port 443 must be free; permission to bind it depends on the OS. Stop the proxy with `nginx -p $proxyRoot -c nginx.conf -s quit`. If PORT changes, update proxy_pass too. Do not expose the internal HTTP listener beyond loopback.
+
+Open https://localhost/api-docs and https://localhost/openapi.json. Login through the same HTTPS origin so the browser can use the Secure, HttpOnly cookie. Origin checks stay enabled. No Atlas records need to change to verify the documentation URLs or health endpoint.
+
+### Automated database isolation
+
+mongodb-memory-server is test infrastructure only. It downloads or reuses a local MongoDB binary and creates disposable instances for transaction, rollback, reservation conflict, concurrent approval, inventory race, account-change and destructive CRUD tests. It does not replace Atlas. The first npm install/npm ci or full test run may take longer while a relatively large MongoDB binary downloads. Never point destructive tests at Atlas.
+
+This workspace lacked Nginx, mkcert and a configured backend/.env during this change. HTTPS proxy execution and the Atlas checker could not be verified here. The proxy configuration test checks its text, not Nginx runtime behavior. Browser certificate trust and authenticated Swagger still require verification on the configured local setup.
