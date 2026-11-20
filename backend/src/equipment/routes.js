@@ -2,15 +2,17 @@ import { Router, json } from 'express';
 import * as v from './validation.js';
 import { fail, errorHandler } from './errors.js';
 import { equipmentService } from './service.js';
+import { inventoryService } from './transactional.js';
 
-export function equipmentRouter({ db, identity = () => null, now }) {
+export function equipmentRouter({ db, client, transactional = false, identity = () => null, now }) {
   const router = Router();
   const service = () => equipmentService(db, now);
+  const writer = res => transactional ? inventoryService({ db, client }, res.locals.actor._id, now) : service();
   const permit = roles => async (req, res, next) => {
     const user = await identity(req);
     if (!user || user.isActive !== true) fail(401, 'UNAUTHENTICATED', 'Authentication required');
     if (!roles.includes(user.role)) fail(403, 'FORBIDDEN', 'Insufficient permissions');
-    res.locals.role = user.role;
+    res.locals.actor = user; res.locals.role = user.role;
     next();
   };
   const all = permit(['borrower', 'staff', 'admin']);
@@ -25,11 +27,11 @@ export function equipmentRouter({ db, identity = () => null, now }) {
       res.json(await service().list(kind, v.listQuery(req.query, kind, res.locals.role))));
     router.post('/' + route, staff, ...parse, async (req, res) => {
       v.noQuery(req.query);
-      res.status(201).json(await service().create(kind, v.body(req.body, kind)));
+      res.status(201).json(await writer(res).create(kind, v.body(req.body, kind)));
     });
     router.patch('/' + route + '/:id', staff, ...parse, async (req, res) => {
       v.noQuery(req.query);
-      res.json(await service().patch(kind, v.id(req.params.id), v.body(req.body, kind, true)));
+      res.json(await writer(res).patch(kind, v.id(req.params.id), v.body(req.body, kind, true)));
     });
   }
   router.get('/equipment-types/:id/availability', all, async (req, res) => {
@@ -39,9 +41,10 @@ export function equipmentRouter({ db, identity = () => null, now }) {
   router.delete('/equipment-units/:id', admin, async (req, res) => {
     v.noQuery(req.query);
     if (req.headers['transfer-encoding'] || Number(req.headers['content-length'] || 0) > 0) fail(400, 'INVALID_INPUT', 'DELETE does not accept a body');
-    await service().remove(v.id(req.params.id));
+    await writer(res).remove(v.id(req.params.id));
     res.status(204).end();
   });
   router.use(errorHandler);
   return router;
 }
+

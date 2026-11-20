@@ -9,7 +9,9 @@ try {
   }
   const connection = await connectDatabase();
   client = connection.client;
-  const app = createApp(connection);
+  const origin = process.env.APP_ORIGIN;
+  if (!origin || new URL(origin).protocol !== 'https:' || new URL(origin).origin !== origin) throw new Error('APP_ORIGIN must be an HTTPS origin');
+  const app = createApp(connection, { origin });
   const server = app.listen(port, process.env.HOST || '127.0.0.1', () => {
     console.log('Relay API listening on port ' + port + '; MongoDB connection verified.');
   });
@@ -36,3 +38,4 @@ try {
   if (client) await client.close();
   process.exitCode = 1;
 }
+

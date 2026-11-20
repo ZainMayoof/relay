@@ -87,3 +87,6 @@ References: [MongoDB Atlas connection requirements](https://www.mongodb.com/docs
 ## Phase 2B equipment implementation
 
 The eight equipment routes are implemented and tested against isolated MongoDB. Production access remains denied until authentication and actor-linked auditing are integrated. See [equipment API contract and test results](backend/EQUIPMENT.md).
+
+## Backend completion branch
+See [current backend contract and verification](backend/BACKEND.md). This supersedes the historical Phase 2 default-deny notes when starting the fully configured server.

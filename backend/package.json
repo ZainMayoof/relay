@@ -12,6 +12,7 @@
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --test test/connection.test.js test/equipment-security.test.js",
     "test:connection": "node --env-file=.env scripts/check-connection.js",
+    "test:all": "node --test test/*.test.js",
     "test:equipment": "node --test test/equipment-integration.test.js",
     "bootstrap:admin": "node --env-file=.env scripts/bootstrap-admin.js"
   },
@@ -24,3 +25,4 @@
     "mongodb-memory-server": "10.4.3"
   }
 }
+
