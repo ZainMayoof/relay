@@ -19,10 +19,11 @@
   "dependencies": {
     "argon2": "0.45.2",
     "express": "^5.1.0",
-    "mongodb": "^6.16.0"
+    "mongodb": "^6.16.0",
+    "swagger-ui-express": "5.0.1"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "13.0.0",
     "mongodb-memory-server": "10.4.3"
   }
 }
-

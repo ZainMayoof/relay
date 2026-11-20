@@ -1,10 +1,12 @@
 import express from 'express';
+import { documentation } from './documentation.js';
 import { backendRouter } from './backend.js';
 import { equipmentRouter } from './equipment/routes.js';
 
 export function createApp({ db, client }, authOptions) {
   const app = express();
   app.disable('x-powered-by');
+  documentation(app);
 
   // Connection health only. No collection records are exposed.
   app.get('/health', async (req, res) => {
@@ -24,4 +26,3 @@ export function createApp({ db, client }, authOptions) {
   app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
   return app;
 }
-

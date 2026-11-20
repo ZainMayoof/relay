@@ -60,3 +60,9 @@ Coverage includes all 24 HTTP routes, cookie flags, login/logout/expiry, placeho
 Run npm test for the original fast suite, npm run test:equipment for equipment regressions, and npm run test:all for all suites. Install mongosh and allow the first MongoDB binary download. MONGOMS_DOWNLOAD_DIR may point to the existing Phase 2A cache. Never substitute an Atlas URI into destructive tests.
 
 Remaining work includes isolated mongodump/mongorestore recovery verification, deployment security testing, login rate limiting, and multi-instance session support. No failover or live Atlas integration test was performed.
+
+## Interactive API documentation
+
+Open `/api-docs` on the running backend for Swagger UI, or `/openapi.json` for the raw OpenAPI 3.0 document. The dedicated specification is `docs/openapi.yaml` (JSON syntax, valid YAML). All 24 operations are documented.
+
+Use the same HTTPS origin configured in APP_ORIGIN for interactive authenticated requests. The browser manages the Secure, HttpOnly session cookie after login. Swagger cannot set that cookie through the Authorize dialog. Local HTTP and cross-origin access may prevent authenticated Try it out requests. Authentication, role checks and Origin protection remain unchanged. Never paste session tokens into Swagger.
