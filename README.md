@@ -8,7 +8,7 @@ Relay uses MongoDB to manage DLAB equipment, borrowing requests, and reservation
 - `database/seed.js`: adds sample data for testing.
 - `database/test-queries.js`: tests CRUD, references, validation, and duplicate reservation rejection.
 
-These three files are unchanged by Phase 1. The backend does not run them automatically.
+These three files are unchanged by Phases 1 and 2B. The backend does not run them automatically.
 
 ## Progress Report 2 — Section 1.2 (Phase 1 only)
 The backend uses Node.js, Express, and the official MongoDB driver. Before listening
@@ -22,8 +22,9 @@ The server shares one MongoClient connection pool, closes it on shutdown, and
 returns a generic error if startup fails so connection details are not logged.
 It does not change database records, schemas, or indexes.
 
-Only `GET /health` is implemented. CRUD APIs, authentication, role permissions,
-transactions, and backups are deferred to later approved phases.
+Phase 1 implemented `GET /health`. Phase 2B adds the equipment routes described
+below, with production access denied. Authentication, actor-linked auditing,
+transactions, and backups remain deferred.
 
 ## Setup
 1. Install Node.js 22.14 or newer.
@@ -74,10 +75,11 @@ These use a controlled database substitute and do not connect to Atlas.
 
 On 2026-11-19, all **7 automated tests passed** on Node.js 22.14.0.
 The live connection check was invoked without configured credentials and correctly
-failed. **A successful connection to the existing Atlas database has not yet been
-verified**, because its connection string is not configured in this workspace.
+failed. The project owner subsequently reported successful manual Atlas connection
+and health endpoint verification during Phase 1 review. That manual verification
+was not independently rerun during the Phase 2B regression review.
 
-See [Phase 1 test notes](backend/TESTING.md) for details and the remaining manual checks.
+See [Phase 1 test notes](backend/TESTING.md) for historical evidence and manual verification instructions.
 
 References: [MongoDB Atlas connection requirements](https://www.mongodb.com/docs/atlas/connect-to-database-deployment/),
 [MongoDB Node.js driver](https://www.mongodb.com/docs/drivers/node/current/get-started/).

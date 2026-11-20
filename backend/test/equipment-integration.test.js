@@ -84,6 +84,39 @@ test('equipment endpoints against disposable real MongoDB', { timeout: 180000 },
       principal={role:'admin',isActive:false}; await call('GET','/equipment-types',undefined,401);
       principal={role:'admin',isActive:true};
     });
+    await t.test('borrower catalog filters never expose inactive types',async()=>{
+      const category='Borrower filter regression';
+      await newType({category,isActive:false});
+      const active=await newType({category});
+      principal={role:'borrower',isActive:true};
+      for(const categoryFilter of ['',category,'No matching category']) {
+        for(const state of ['', 'true', 'false']) {
+          for(const limit of ['', '1', '100']) {
+            for(const offset of ['', '0', '1']) {
+              const query=new URLSearchParams();
+              if(categoryFilter) query.set('category',categoryFilter);
+              if(state) query.set('isActive',state);
+              if(limit) query.set('limit',limit);
+              if(offset) query.set('offset',offset);
+              const result=await call('GET','/equipment-types?'+query,undefined,state==='false'?403:200);
+              if(state!=='false') assert(result.items.every(item=>item.isActive===true));
+            }
+          }
+        }
+      }
+      const result=await call('GET','/equipment-types?category='+encodeURIComponent(category));
+      assert.deepEqual(result.items.map(item=>item._id),[active._id]);
+      await call('GET','/equipment-types?isActive=true&isActive=false',undefined,400);
+      await call('GET','/equipment-types?isActive[$ne]=true',undefined,400);
+      principal={role:'admin',isActive:true};
+    });
+    await t.test('deactivation succeeds for an equipment type with zero units',async()=>{
+      const type=await newType();
+      assert.equal(await db.collection('equipmentUnits').countDocuments({equipmentTypeId:new ObjectId(type._id)}),0);
+      const result=await call('PATCH','/equipment-types/'+type._id,{isActive:false});
+      assert.equal(result.isActive,false);
+      assert.equal((await db.collection('equipmentTypes').findOne({_id:new ObjectId(type._id)})).isActive,false);
+    });
     await t.test('strict validation, protected fields, references and media errors',async()=>{
       const type=await newType(); const unit=await newUnit(type);
       for(const field of ['_id','createdAt','updatedAt','activeCheckoutRequestId','equipmentTypeId','assetTag','$set']) await call('PATCH','/equipment-units/'+unit._id,{[field]:'bad'},400);
@@ -153,8 +186,24 @@ test('equipment endpoints against disposable real MongoDB', { timeout: 180000 },
       assert.equal((await availability(type,'2026-12-01')).availableCount,0);
       await db.collection('borrowRequests').updateOne({_id:request},{$set:{endDate:new Date('2026-11-21Z'),status:'returned'}});
       assert.equal((await availability(type,'2026-12-01')).availableCount,0);
+      for(const changes of [
+        {items:[{equipmentTypeId:new ObjectId(),quantity:new Int32(1)}]},
+        {startDate:new Date('2026-11-22Z')},
+        {endDate:new Date('2026-11-21T12:00:00Z')},
+        {checkedOutAt:new Date('2026-11-21T12:00:00Z')},
+        {returnedAt:new Date('2026-11-20T10:00:00Z')}
+      ]) {
+        await db.collection('borrowRequests').replaceOne({_id:request},{
+          _id:request,borrowerId:new ObjectId(),items:[{equipmentTypeId:new ObjectId(type._id),quantity:new Int32(1)}],
+          startDate:new Date('2026-11-19Z'),endDate:new Date('2026-11-21Z'),checkedOutAt:new Date('2026-11-19T12:00:00Z'),
+          status:'checked_out',requestedAt:now,updatedAt:now,...changes
+        });
+        assert.equal((await availability(type,'2026-12-01')).availableCount,0);
+      }
       await db.collection('borrowRequests').deleteOne({_id:request});
       assert.equal((await availability(type,'2026-12-01')).availableCount,0);
+      await newUnit(type);
+      assert.equal((await availability(type,'2026-12-01')).availableCount,1);
     });
   } finally {
     if(server){server.closeAllConnections();await new Promise(r=>server.close(r));}

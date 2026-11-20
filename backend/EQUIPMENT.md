@@ -53,7 +53,7 @@ Prerequisites: Node.js 22.14+, mongosh on PATH, and network access for the first
 
 Verified on 2026-11-20, Node.js 22.14.0, MongoDB 7.0.24:
 - npm test: 9 passed, 0 failed, 0 skipped. Includes the seven unchanged Phase 1 tests and two production-denial/error-sanitization tests. Database behavior here is simulated.
-- npm run test:equipment: 8 scenario groups passed against real MongoDB (Node reports 9 passes including the parent test), 0 failed, 0 skipped.
-- Real scenarios cover all eight routes, trusted test-role permissions, strict validation, references, duplicate inserts, deletion/update conflicts, inclusive/whole-interval availability, lifecycle filtering and checkout rules.
+- npm run test:equipment: 10 scenario groups passed against real MongoDB (Node reports 11 passes including the parent test), 0 failed, 0 skipped.
+- Real scenarios cover all eight routes, trusted test-role permissions, strict validation, references, duplicate inserts, deletion/update conflicts, inclusive/whole-interval availability, lifecycle filtering and checkout rules. Regression coverage includes 243 borrower filter combinations, zero-unit type deactivation, and future counts for overdue, missing, mismatched-type, invalid-date, future-timestamp and returned checkout records.
 
 No Atlas, real login/session, inventory audit, failover or concurrent borrowing approval tests were run. Competing asset-tag insertion was tested; cross-collection races remain Phase 3 work.
