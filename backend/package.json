@@ -10,11 +10,15 @@
   "scripts": {
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
-    "test": "node --test test/connection.test.js",
-    "test:connection": "node --env-file=.env scripts/check-connection.js"
+    "test": "node --test test/connection.test.js test/equipment-security.test.js",
+    "test:connection": "node --env-file=.env scripts/check-connection.js",
+    "test:equipment": "node --test test/equipment-integration.test.js"
   },
   "dependencies": {
     "express": "^5.1.0",
     "mongodb": "^6.16.0"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "10.4.3"
   }
 }

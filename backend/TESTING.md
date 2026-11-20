@@ -14,7 +14,7 @@ Result: **7 passed, 0 failed, 0 skipped** on the final run.
 4. A failed ping stops verification.
 5. A real local HTTP request receives 200 when the supplied database ping succeeds.
 6. A real local HTTP request receives 503 when the supplied database ping fails; credentials from the error are not exposed.
-7. A collection API route is absent and returns 404.
+7. The unimplemented `/api/users` route returns 404.
 
 Database operations in these tests are substituted with controlled functions.
 These tests verify application behavior, not Atlas connectivity. The initial
@@ -26,8 +26,11 @@ Attempted: `node scripts/check-connection.js` without a configured MONGODB_URI.
 Result: exit code 1 and the expected generic failure message.
 This verifies the missing-configuration failure path only.
 
-**Pending:** successful connection to the user's existing Atlas database.
-No configured Atlas connection string was available during implementation.
+No configured Atlas connection string was available during Phase 1 implementation.
+The project owner subsequently reported successful manual Atlas connection and
+health endpoint verification. This was not independently rerun during Phase 2B.
+The original seven tests remain unchanged; see [Phase 2B results](EQUIPMENT.md)
+for the current expanded suite.
 
 After setting backend/.env locally:
 1. Run `npm run test:connection` and record the actual exit code and output.

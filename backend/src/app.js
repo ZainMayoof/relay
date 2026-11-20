@@ -1,4 +1,5 @@
 import express from 'express';
+import { equipmentRouter } from './equipment/routes.js';
 
 export function createApp({ db }) {
   const app = express();
@@ -14,6 +15,9 @@ export function createApp({ db }) {
       res.status(503).json({ status: 'unavailable', database: 'disconnected' });
     }
   });
+
+  // Equipment stays locked until authentication and auditing are integrated.
+  app.use('/api', equipmentRouter({ db }));
 
   app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
   return app;
